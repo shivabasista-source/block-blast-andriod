@@ -76,13 +76,13 @@ jobs:
           }
           EOF
 
-            - name: Build web game
+       - name: Build web game
         run: |
           cd "$PROJECT_DIR"
           sed -i '/bundledWebRuntime/d' capacitor.config.ts
           npm run build
 
-      - name: Create Android project
+        - name: Create Android project
         run: |
           cd "$PROJECT_DIR"
           npx cap add android
