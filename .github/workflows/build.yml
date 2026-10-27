@@ -8,8 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download project files
+      - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Check project ZIP
+        run: |
+          ls -la
+          unzip -l 2d-block-blast-android-project.zip
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -17,15 +22,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build APK
+      - name: Extract project
         run: |
+          mkdir project
           unzip -o 2d-block-blast-android-project.zip -d project
-          cd project
-          find . -name gradlew -type f
-          chmod +x gradlew
-          ./gradlew assembleDebug
-
-      -
+          find project -maxdepth 4 -type f | head -100
