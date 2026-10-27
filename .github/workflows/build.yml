@@ -11,6 +11,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: ''
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -20,28 +26,53 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: ''
+          packages: 'platform-tools,platforms;android-35,build-tools;35.0.0'
 
-      - name: Check project ZIP
+      - name: Extract game source code
         run: |
-          ls -la
-          unzip -l 2d-block-blast-android-project.zip
-
-      - name: Extract project
-        run: |
-          mkdir -p project
-          unzip -o 2d-block-blast-android-project.zip -d project
-          find project -name gradlew -type f
-
-      - name: Build APK
-        run: |
-          cd project
-          GRADLEW=$(find . -name gradlew -type f | head -1)
-          if [ -z "$GRADLEW" ]; then
-            echo "ERROR: No Gradle wrapper found in the ZIP."
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name '*.zip' | head -1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: Game ZIP not found."
             exit 1
           fi
-          cd "$(dirname "$GRADLEW")"
+          mkdir -p project
+          unzip -oq "$ZIP_FILE" -d project
+          test -f project/package.json || {
+            echo "ERROR: package.json not found."
+            exit 1
+          }
+
+      - name: Install dependencies
+        working-directory: project
+        run: |
+          npm install
+          npm install @capacitor/core@7 @capacitor/android@7
+          npm install --save-dev @capacitor/cli@7
+
+      - name: Configure Android app
+        working-directory: project
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.blockblast.game",
+            "appName": "Block Blast",
+            "webDir": "dist"
+          }
+          EOF
+
+      - name: Build web game
+        working-directory: project
+        run: npm run build
+
+      - name: Create Android project
+        working-directory: project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: project/android
+        run: |
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -49,5 +80,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Block-Blast-APK
-          path: project/**/build/outputs/apk/debug/*.apk
+          path: project/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
