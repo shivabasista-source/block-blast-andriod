@@ -15,29 +15,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: ''
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-          
 
-      - name: Extract game source code
-        run: |
-          ZIP_FILE=$(find . -maxdepth 1 -type f -name '*.zip' | head -1)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Game ZIP not found."
-            exit 1
-          fi
-          mkdir -p project
-          unzip -oq "$ZIP_FILE" -d project
-          test -f project/package.json || {
-            echo "ERROR: package.json not found."
-            exit 1
-          }
-          
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
@@ -46,16 +30,43 @@ jobs:
       - name: Install Android packages
         run: |
           sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-      - name: Install dependencies
-        working-directory: project
+
+      - name: Extract game source code
+        shell: bash
         run: |
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name '*.zip' | head -1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: No ZIP file found in repository."
+            exit 1
+          fi
+
+          mkdir -p project
+          unzip -oq "$ZIP_FILE" -d project
+
+          PACKAGE_FILE=$(find project -type f -name package.json \
+            -not -path '*/node_modules/*' | head -1)
+
+          if [ -z "$PACKAGE_FILE" ]; then
+            echo "ERROR: package.json was not found inside the ZIP."
+            find project -maxdepth 4 -type f | head -100
+            exit 1
+          fi
+
+          PROJECT_DIR="$(dirname "$(realpath "$PACKAGE_FILE")")"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          echo "Game project found at: $PROJECT_DIR"
+
+      - name: Install game dependencies
+        run: |
+          cd "$PROJECT_DIR"
           npm install
           npm install @capacitor/core@7 @capacitor/android@7
           npm install --save-dev @capacitor/cli@7
 
       - name: Configure Android app
-        working-directory: project
         run: |
+          cd "$PROJECT_DIR"
           cat > capacitor.config.json <<'EOF'
           {
             "appId": "com.blockblast.game",
@@ -65,18 +76,19 @@ jobs:
           EOF
 
       - name: Build web game
-        working-directory: project
-        run: npm run build
+        run: |
+          cd "$PROJECT_DIR"
+          npm run build
 
       - name: Create Android project
-        working-directory: project
         run: |
+          cd "$PROJECT_DIR"
           npx cap add android
           npx cap sync android
 
       - name: Build APK
-        working-directory: project/android
         run: |
+          cd "$PROJECT_DIR/android"
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -84,5 +96,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Block-Blast-APK
-          path: project/android/app/build/outputs/apk/debug/app-debug.apk
+          path: project/**/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
