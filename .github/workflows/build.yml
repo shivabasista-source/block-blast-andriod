@@ -1,0 +1,31 @@
+name: Build Block Blast APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download project files
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android
+        uses: android-actions/setup-android@v3
+
+      - name: Build APK
+        run: |
+          unzip -o 2d-block-blast-android-project.zip -d project
+          cd project
+          find . -name gradlew -type f
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      -
