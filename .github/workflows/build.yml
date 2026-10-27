@@ -56,13 +56,14 @@ jobs:
           PROJECT_DIR="$(dirname "$(realpath "$PACKAGE_FILE")")"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Game project found at: $PROJECT_DIR"
-
+          
       - name: Install game dependencies
         run: |
           cd "$PROJECT_DIR"
-          npm install
-          npm install @capacitor/core@7 @capacitor/android@7
-          npm install --save-dev @capacitor/cli@7
+          npm install --legacy-peer-deps
+          npm install esbuild@^0.28.0 --save-dev --legacy-peer-deps
+          npm install @capacitor/core@7 @capacitor/android@7 --legacy-peer-deps
+          npm install --save-dev @capacitor/cli@7 --legacy-peer-deps
 
       - name: Configure Android app
         run: |
