@@ -23,13 +23,6 @@ jobs:
           distribution: temurin
           java-version: '17'
           
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
 
       - name: Extract game source code
         run: |
@@ -44,7 +37,15 @@ jobs:
             echo "ERROR: package.json not found."
             exit 1
           }
+          
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
 
+      - name: Install Android packages
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Install dependencies
         working-directory: project
         run: |
