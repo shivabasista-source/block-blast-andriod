@@ -11,11 +11,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check project ZIP
-        run: |
-          ls -la
-          unzip -l 2d-block-blast-android-project.zip
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -24,9 +19,35 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: ''
+
+      - name: Check project ZIP
+        run: |
+          ls -la
+          unzip -l 2d-block-blast-android-project.zip
 
       - name: Extract project
         run: |
-          mkdir project
+          mkdir -p project
           unzip -o 2d-block-blast-android-project.zip -d project
-          find project -maxdepth 4 -type f | head -100
+          find project -name gradlew -type f
+
+      - name: Build APK
+        run: |
+          cd project
+          GRADLEW=$(find . -name gradlew -type f | head -1)
+          if [ -z "$GRADLEW" ]; then
+            echo "ERROR: No Gradle wrapper found in the ZIP."
+            exit 1
+          fi
+          cd "$(dirname "$GRADLEW")"
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Block-Blast-APK
+          path: project/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
